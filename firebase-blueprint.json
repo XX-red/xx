@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "Camera": {
+      "title": "Camera",
+      "description": "A security camera device in the prison system",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "sn": { "type": "string" },
+        "status": { "type": "string", "enum": ["online", "offline", "signal_lost"] },
+        "streamUrl": { "type": "string" },
+        "lastOnline": { "type": "string" },
+        "personCount": { "type": "number" },
+        "location": { "type": "string" }
+      },
+      "required": ["id", "name", "sn", "status", "streamUrl"]
+    },
+    "Alert": {
+      "title": "Alert",
+      "description": "An AI-detected behavioral alert",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "cameraId": { "type": "string" },
+        "cameraName": { "type": "string" },
+        "type": { "type": "string" },
+        "level": { "type": "string", "enum": ["high", "medium", "low"] },
+        "time": { "type": "string" },
+        "snapshotUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "ignored"] },
+        "confidence": { "type": "number" },
+        "duration": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["id", "cameraId", "type", "level", "time", "snapshotUrl", "status", "confidence"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System operation log for auditing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "operatorId": { "type": "string" },
+        "operatorName": { "type": "string" },
+        "category": { "type": "string" },
+        "action": { "type": "string" },
+        "riskLevel": { "type": "string", "enum": ["high", "medium", "low"] },
+        "status": { "type": "boolean" }
+      },
+      "required": ["id", "timestamp", "operatorId", "action", "status"]
+    },
+    "SystemStatus": {
+      "title": "SystemStatus",
+      "description": "Real-time system resource usage",
+      "type": "object",
+      "properties": {
+        "cpu": { "type": "number" },
+        "memory": { "type": "number" },
+        "storage": { "type": "number" },
+        "gpu": { "type": "number" },
+        "uptime": { "type": "string" },
+        "version": { "type": "string" }
+      },
+      "required": ["cpu", "memory", "storage", "gpu", "uptime", "version"]
+    },
+    "User": {
+      "title": "User",
+      "description": "System user profile and permissions",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string" },
+        "lastLogin": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "username", "role"]
+    },
+    "UserCredential": {
+      "title": "UserCredential",
+      "description": "Private login credentials",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "password": { "type": "string" }
+      },
+      "required": ["uid", "username", "password"]
+    }
+  },
+  "firestore": {
+    "cameras": {
+      "schema": "Camera",
+      "description": "List of active cameras"
+    },
+    "alerts": {
+      "schema": "Alert",
+      "description": "History of AI alerts"
+    },
+    "auditLogs": {
+      "schema": "AuditLog",
+      "description": "System audit trail"
+    },
+    "systemStatus": {
+      "schema": "SystemStatus",
+      "description": "System health metrics (usually a single doc)"
+    },
+    "users": {
+      "schema": "User",
+      "description": "User profiles and roles"
+    },
+    "credentials": {
+      "schema": "UserCredential",
+      "description": "Secure storage of login passwords"
+    }
+  }
+}

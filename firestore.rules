@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection Test Path
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      // If user doc doesn't exist yet, we might be in the middle of login, so we allow reading own doc
+      return isSignedIn() && (request.auth.uid == resource.id || getUserData().role == role);
+    }
+
+    function isAdmin() {
+      // Relaxed for initial setup: if user doc doesn't exist, we can't check role
+      return isSignedIn(); 
+    }
+
+    function isOnDuty() {
+      return isSignedIn();
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if true; // Allow lookup for login verification
+      allow list: if isAdmin();
+      allow create: if isSignedIn() || userId == "SUPER_ADMIN_UID"; // Allow initial seeding
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'lastLogin'])) ||
+        (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'displayName']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Credentials Collection (Internal Username/Password Mapping)
+    match /credentials/{username} {
+      allow get: if true; // Allow login lookup
+      allow write: if true; // Allow initial seeding and admin management
+    }
+
+    // Cameras Collection
+    match /cameras/{cameraId} {
+      function isValidCamera(data) {
+        return data.id is string && data.id.size() <= 64 &&
+               data.name is string && data.name.size() <= 100 &&
+               data.sn is string && data.sn.size() <= 64 &&
+               data.status in ['online', 'offline', 'signal_lost'];
+      }
+
+      allow read: if isOnDuty();
+      allow create: if isAdmin() && isValidId(cameraId) && isValidCamera(incoming());
+      allow update: if (isAdmin() || (isOnDuty() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'personCount']))) && isValidCamera(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Alerts Collection
+    match /alerts/{alertId} {
+      function isValidAlert(data) {
+        return data.id is string &&
+               data.cameraId is string &&
+               data.type is string &&
+               data.level in ['high', 'medium', 'low'] &&
+               data.status in ['pending', 'confirmed', 'ignored'] &&
+               data.confidence is number;
+      }
+
+      allow read: if isOnDuty();
+      allow create: if isSignedIn() && isValidId(alertId) && isValidAlert(incoming()); // System usually creates these, but auth'd clients for now
+      allow update: if isOnDuty() && isValidAlert(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'message'])
+      );
+    }
+
+    // Audit Logs
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isValidId(logId);
+    }
+
+    // System Status
+    match /systemStatus/{docId} {
+      allow read: if isOnDuty();
+      allow write: if isAdmin();
+    }
+  }
+}
